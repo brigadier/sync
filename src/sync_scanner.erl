@@ -436,11 +436,19 @@ erlydtl_compile(SrcFile, Options) ->
             {value, {outdir, OutDir}, OtherOptions} ->
                 [{out_dir, OutDir} | OtherOptions]
         end,
-    Module =
-        list_to_atom(
-            lists:flatten(filename:basename(SrcFile, ".dtl") ++ "_dtl")),
+    Module = erlydtl_module_name(SrcFile),
     Compiler = erlydtl,
     Compiler:compile(SrcFile, Module, DtlOptions).
+
+erlydtl_module_name(SrcFile) ->
+    erlydtl_module_name(SrcFile, application:get_env(sync, erlydtl_full_path, false)).
+
+erlydtl_module_name(SrcFile, false) ->
+    list_to_atom(lists:flatten(filename:basename(SrcFile, ".dtl") ++ "_dtl"));
+erlydtl_module_name(SrcFile_, true) ->
+    SrcFile = lists:last(re:split(SrcFile_, "/templates/", [{return, list}])),
+    list_to_atom(re:replace(SrcFile, "[/.]+", "_", [global, {return, list}])).
+
 
 elixir_compile(SrcFile, Options) ->
     Outdir = proplists:get_value(outdir, Options),
@@ -478,7 +486,7 @@ determine_compile_fun_and_module_name(SrcFile) ->
             list_to_atom(filename:basename(SrcFile, ".erl"))};
         dtl ->
             {fun erlydtl_compile/2,
-            list_to_atom(lists:flatten(filename:basename(SrcFile, ".dtl") ++ "_dtl"))};
+            erlydtl_module_name(SrcFile)};
         elixir ->
             {fun elixir_compile/2,
             list_to_atom(filename:basename(SrcFile, ".ex"))}
